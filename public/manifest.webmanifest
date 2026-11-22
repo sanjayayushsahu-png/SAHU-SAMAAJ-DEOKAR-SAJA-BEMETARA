@@ -1,0 +1,26 @@
+{
+  "name": "साहू समाज छत्तीसगढ़ | Sahu Samaj Chhattisgarh",
+  "short_name": "साहू समाज CG",
+  "description": "छत्तीसगढ़ साहू समाज का आधिकारिक सामाजिक चौपाल, भक्त माता कर्मा भजन-आरती, इतिहास, गौरव, पदाधिकारी निर्देशिका एवं कार्यक्रम ऐप।",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFBF2",
+  "theme_color": "#800000",
+  "orientation": "portrait-primary",
+  "lang": "hi-IN",
+  "categories": ["social", "lifestyle", "culture"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

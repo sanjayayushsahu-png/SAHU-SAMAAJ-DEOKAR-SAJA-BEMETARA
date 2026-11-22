@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#A81818"/>
+      <stop offset="100%" stop-color="#680000"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FAF3D1"/>
+      <stop offset="50%" stop-color="#D4AF37"/>
+      <stop offset="100%" stop-color="#926E1A"/>
+    </linearGradient>
+    <linearGradient id="saffron" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFA057"/>
+      <stop offset="100%" stop-color="#FF6B00"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="40" fill="url(#bg)"/>
+  <circle cx="96" cy="96" r="78" fill="none" stroke="url(#gold)" stroke-width="3.5" stroke-dasharray="6 4"/>
+  <circle cx="96" cy="96" r="68" fill="none" stroke="url(#gold)" stroke-width="2"/>
+  <!-- Sacred Diya & Kalash Emblem -->
+  <path d="M96 36 C106 54 114 66 96 82 C78 66 86 54 96 36 Z" fill="url(#saffron)"/>
+  <path d="M96 48 C101 58 104 65 96 74 C88 65 91 58 96 48 Z" fill="#FFF4C2"/>
+  <path d="M52 94 Q96 124 140 94 Q130 132 96 134 Q62 132 52 94 Z" fill="url(#gold)"/>
+  <ellipse cx="96" cy="94" rx="44" ry="10" fill="#8F3600" stroke="url(#gold)" stroke-width="2.5"/>
+  <text x="96" y="160" text-anchor="middle" fill="#FAF3D1" font-family="sans-serif" font-size="16" font-weight="700" letter-spacing="1">साहू समाज</text>
+</svg>
