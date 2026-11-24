@@ -84,11 +84,14 @@ app.post('/api/auth/member', async (req, res) => {
       return res.status(400).json({ error: 'Name, 10-digit mobile, and block/village are required' });
     }
 
-    const isSuperAdmin = cleanMobile === SUPER_ADMIN_MOBILE;
-    const id = isSuperAdmin ? SUPER_ADMIN_USER.id : `member-${cleanMobile}`;
-    const role = isSuperAdmin ? 'super_admin' : 'member';
-    const finalName = isSuperAdmin ? SUPER_ADMIN_USER.name : name.trim();
-    const finalNameHi = isSuperAdmin ? SUPER_ADMIN_USER.nameHi : name.trim();
+    if (cleanMobile === SUPER_ADMIN_MOBILE) {
+      return res.status(403).json({ error: 'Use Super Admin login with your password.' });
+    }
+
+    const id = `member-${cleanMobile}`;
+    const role = 'member';
+    const finalName = name.trim();
+    const finalNameHi = name.trim();
 
     await pool.query(
       `INSERT INTO users (id, name, name_hi, mobile, district, district_hi, block_village, role)
@@ -132,9 +135,10 @@ app.post('/api/auth/member', async (req, res) => {
 // --- Auth: Super Admin Login (Sanjay Kumar Sahu) ---
 app.post('/api/auth/admin', async (req, res) => {
   try {
-    const { pin } = req.body || {};
-    if (String(pin || '').trim() !== SUPER_ADMIN_PIN) {
-      return res.status(401).json({ error: 'Invalid Admin PIN' });
+    const mobile = String(req.body?.mobile || '').replace(/\D/g, '');
+    const pin = String(req.body?.pin || '').trim();
+    if (mobile !== SUPER_ADMIN_MOBILE || pin !== SUPER_ADMIN_PIN) {
+      return res.status(401).json({ error: 'Invalid Super Admin mobile or password' });
     }
     const user = { ...SUPER_ADMIN_USER, mobile: SUPER_ADMIN_MOBILE };
     const token = signToken(user);

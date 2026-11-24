@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, UserCheck, ShieldCheck, Phone, MapPin, Home, User } from 'lucide-react';
+import { X, UserCheck, ShieldCheck, Phone, MapPin, Home, User, Lock } from 'lucide-react';
 import { CG_DISTRICTS, BEMETARA_REGIONS, SUPER_ADMIN_USER } from '../data/chhattisgarhData';
 import { t } from '../utils/i18n';
 import { api, setAuthToken } from '../utils/api';
@@ -10,6 +10,7 @@ export default function AuthModal({ isOpen, onClose, lang, onLogin, serverConnec
   const [mobile, setMobile] = useState('');
   const [district, setDistrict] = useState('Bemetara');
   const [blockVillage, setBlockVillage] = useState('');
+  const [adminMobile, setAdminMobile] = useState('');
   const [adminPin, setAdminPin] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -36,6 +37,16 @@ export default function AuthModal({ isOpen, onClose, lang, onLogin, serverConnec
       );
       return;
     }
+    if (cleanMobile === SUPER_ADMIN_USER.mobile) {
+      setError(
+        t(
+          lang,
+          'यह सुपर एडमिन नंबर है। कृपया ऊपर "सुपर एडमिन" टैब से पासवर्ड डालकर लॉगिन करें।',
+          'This is the Super Admin number. Please use the Super Admin tab with your password.'
+        )
+      );
+      return;
+    }
 
     const distObj = CG_DISTRICTS.find((d) => d.en === district) || CG_DISTRICTS[0];
     setSubmitting(true);
@@ -53,64 +64,67 @@ export default function AuthModal({ isOpen, onClose, lang, onLogin, serverConnec
         onClose();
         return;
       }
-    } catch {
-      // Fallback to local session if server unavailable
+    } catch (err) {
+      setError(err?.message || t(lang, 'लॉगिन में त्रुटि हुई।', 'Login failed.'));
+      setSubmitting(false);
+      return;
     } finally {
       setSubmitting(false);
     }
 
-    const isSuperAdminMobile = cleanMobile === SUPER_ADMIN_USER.mobile;
-    onLogin(
-      isSuperAdminMobile
-        ? SUPER_ADMIN_USER
-        : {
-            id: `member-${cleanMobile}`,
-            name: name.trim(),
-            nameHi: name.trim(),
-            mobile: cleanMobile,
-            district: distObj.en,
-            districtHi: distObj.hi,
-            blockVillage: blockVillage.trim(),
-            role: 'member',
-          }
-    );
+    onLogin({
+      id: `member-${cleanMobile}`,
+      name: name.trim(),
+      nameHi: name.trim(),
+      mobile: cleanMobile,
+      district: distObj.en,
+      districtHi: distObj.hi,
+      blockVillage: blockVillage.trim(),
+      role: 'member',
+    });
     onClose();
   };
 
   const handleAdminSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSubmitting(true);
-    try {
-      if (serverConnected) {
-        const res = await api.loginAdmin(adminPin.trim());
-        setAuthToken(res.token);
-        onLogin(res.user);
-        onClose();
-        return;
-      }
-    } catch {
+    const cleanAdminMobile = adminMobile.replace(/\D/g, '');
+    if (cleanAdminMobile.length !== 10) {
       setError(
-        t(lang, 'अमान्य एडमिन पिन। डेमो पिन: 1234', 'Invalid Admin PIN. Demo PIN: 1234')
+        t(lang, 'कृपया 10 अंकों का अधिकृत सुपर एडमिन मोबाइल नंबर दर्ज करें।', 'Please enter the authorized 10-digit Super Admin mobile number.')
       );
-      setSubmitting(false);
       return;
-    } finally {
-      setSubmitting(false);
     }
-
-    if (adminPin.trim() !== '1234') {
+    if (!adminPin.trim()) {
+      setError(t(lang, 'कृपया गुप्त एडमिन पासवर्ड दर्ज करें।', 'Please enter the secret Admin password.'));
+      return;
+    }
+    if (!serverConnected) {
       setError(
         t(
           lang,
-          'अमान्य एडमिन पिन। डेमो पिन: 1234',
-          'Invalid Admin PIN. Demo PIN: 1234'
+          'सुरक्षा कारणों से सुपर एडमिन लॉगिन केवल लाइव सर्वर (MySQL) से जुड़े होने पर ही संभव है।',
+          'For security, Super Admin login requires a live server connection.'
         )
       );
       return;
     }
-    onLogin(SUPER_ADMIN_USER);
-    onClose();
+
+    setSubmitting(true);
+    try {
+      const res = await api.loginAdmin(cleanAdminMobile, adminPin.trim());
+      setAuthToken(res.token);
+      onLogin(res.user);
+      setAdminPin('');
+      onClose();
+    } catch (err) {
+      setError(
+        err?.message ||
+          t(lang, 'गलत मोबाइल नंबर या एडमिन पासवर्ड।', 'Invalid Super Admin mobile number or password.')
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -205,7 +219,7 @@ export default function AuthModal({ isOpen, onClose, lang, onLogin, serverConnec
                     maxLength={10}
                     value={mobile}
                     onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
-                    placeholder="9826XXXXXX"
+                    placeholder="98XXXXXXXX"
                     className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gold-400/70 bg-white focus:outline-none focus:ring-2 focus:ring-saffron-500 text-sm"
                   />
                 </div>
@@ -267,9 +281,12 @@ export default function AuthModal({ isOpen, onClose, lang, onLogin, serverConnec
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 text-white font-bold shadow-md hover:from-saffron-400 hover:to-saffron-500 transition-all"
+                disabled={submitting}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-saffron-500 to-saffron-600 text-white font-bold shadow-md hover:from-saffron-400 hover:to-saffron-500 disabled:opacity-60 transition-all"
               >
-                {t(lang, 'पंजीयन कर प्रवेश करें', 'Register & Continue')}
+                {submitting
+                  ? t(lang, 'प्रवेश हो रहा है...', 'Signing in...')
+                  : t(lang, 'पंजीयन कर प्रवेश करें', 'Register & Continue')}
               </button>
             </form>
           ) : (
@@ -277,35 +294,60 @@ export default function AuthModal({ isOpen, onClose, lang, onLogin, serverConnec
               <div className="p-3.5 rounded-xl bg-gold-50 border border-gold-400/60 text-sm">
                 <div className="font-bold text-maroon-800 flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-saffron-600" />
-                  <span>{t(lang, 'सुपर एडमिन: संजय कुमार साहू (9630273317)', 'Super Admin: Sanjay Kumar Sahu (9630273317)')}</span>
+                  <span>{t(lang, 'सुपर एडमिन: केवल अधिकृत प्रवेश', 'Super Admin: Restricted Access')}</span>
                 </div>
                 <p className="text-xs text-stone-600 mt-1">
                   {t(
                     lang,
-                    'पोस्ट स्वीकृत/हटाने, महत्वपूर्ण सूचना पिन करने तथा भजन व इतिहास सामग्री प्रबंधन हेतु।',
-                    'Manage post approvals, pin announcements, and curate bhajans, heritage, directory & events.'
+                    'केवल अधिकृत सुपर एडमिन (संजय कुमार साहू) अपने पंजीकृत मोबाइल नंबर और गुप्त पासवर्ड से प्रवेश कर सकते हैं। 5 गलत प्रयास पर 15 मिनट का लॉक लग जाएगा।',
+                    'Only the authorized Super Admin (Sanjay Kumar Sahu) can sign in using the registered mobile number and secret password. 5 failed attempts trigger a 15-minute lockout.'
                   )}
                 </p>
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-maroon-900 mb-1">
-                  {t(lang, 'एडमिन सुरक्षा पिन (Demo PIN: 1234)', 'Admin Security PIN (Demo PIN: 1234)')}
+                  {t(lang, 'पंजीकृत एडमिन मोबाइल नंबर *', 'Registered Admin Mobile Number *')}
                 </label>
-                <input
-                  type="password"
-                  value={adminPin}
-                  onChange={(e) => setAdminPin(e.target.value)}
-                  placeholder="1234"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gold-400/70 bg-white focus:outline-none focus:ring-2 focus:ring-maroon-600 text-center text-lg tracking-widest font-bold"
-                />
+                <div className="relative">
+                  <Phone className="w-4 h-4 text-maroon-700 absolute left-3 top-3" />
+                  <input
+                    type="tel"
+                    maxLength={10}
+                    autoComplete="username"
+                    value={adminMobile}
+                    onChange={(e) => setAdminMobile(e.target.value.replace(/\D/g, ''))}
+                    placeholder={t(lang, '10 अंकों का एडमिन नंबर', '10-digit Admin mobile')}
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gold-400/70 bg-white focus:outline-none focus:ring-2 focus:ring-maroon-600 text-sm font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-maroon-900 mb-1">
+                  {t(lang, 'गुप्त एडमिन पासवर्ड *', 'Secret Admin Password *')}
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-maroon-700 absolute left-3 top-3" />
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    value={adminPin}
+                    onChange={(e) => setAdminPin(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gold-400/70 bg-white focus:outline-none focus:ring-2 focus:ring-maroon-600 text-sm font-semibold tracking-wider"
+                  />
+                </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-maroon-700 to-maroon-800 text-gold-100 font-bold shadow-md hover:from-maroon-600 hover:to-maroon-700 transition-all"
+                disabled={submitting}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-maroon-700 to-maroon-800 text-gold-100 font-bold shadow-md hover:from-maroon-600 hover:to-maroon-700 disabled:opacity-60 transition-all"
               >
-                {t(lang, 'सुपर एडमिन डैशबोर्ड खोलें', 'Sign In as Super Admin')}
+                {submitting
+                  ? t(lang, 'सत्यापन हो रहा है...', 'Verifying...')
+                  : t(lang, 'सुपर एडमिन सुरक्षित लॉगिन', 'Secure Super Admin Sign In')}
               </button>
             </form>
           )}

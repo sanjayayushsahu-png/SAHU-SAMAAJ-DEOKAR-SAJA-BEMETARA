@@ -53,8 +53,8 @@ export const api = {
   bootstrap: () => request(`/bootstrap?t=${Date.now()}`),
   loginMember: (payload) =>
     request('/auth/member', { method: 'POST', body: JSON.stringify(payload) }),
-  loginAdmin: (pin) =>
-    request('/auth/admin', { method: 'POST', body: JSON.stringify({ pin }) }),
+  loginAdmin: (mobile, pin) =>
+    request('/auth/admin', { method: 'POST', body: JSON.stringify({ mobile, pin }) }),
   createPost: (payload) =>
     request('/posts', { method: 'POST', body: JSON.stringify(payload) }),
   toggleLike: (postId) =>

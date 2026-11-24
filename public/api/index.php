@@ -275,29 +275,55 @@ if ($route === 'auth/member' && $method === 'POST') {
     if ($name === '' || strlen($mobile) !== 10 || $block === '') {
         respond(['error' => 'Name, 10-digit mobile, and block/village are required'], 400);
     }
-    $isAdmin = ($mobile === $SUPER_ADMIN_MOBILE);
+    if ($mobile === $SUPER_ADMIN_MOBILE) {
+        respond(['error' => 'यह सुपर एडमिन नंबर है। कृपया सुपर एडमिन टैब से पासवर्ड डालकर लॉगिन करें।'], 403);
+    }
     $user = [
-        'id' => $isAdmin ? $SUPER_ADMIN_USER['id'] : "member-$mobile",
-        'name' => $isAdmin ? $SUPER_ADMIN_USER['name'] : $name,
-        'nameHi' => $isAdmin ? $SUPER_ADMIN_USER['nameHi'] : $name,
+        'id' => "member-$mobile",
+        'name' => $name,
+        'nameHi' => $name,
         'mobile' => $mobile,
         'district' => $body['district'] ?? 'Bemetara',
         'districtHi' => $body['districtHi'] ?? 'बेमेतरा',
         'blockVillage' => $block,
-        'role' => $isAdmin ? 'super_admin' : 'member',
+        'role' => 'member',
     ];
     $stmt = $pdo->prepare("INSERT INTO users (id, name, name_hi, mobile, district, district_hi, block_village, role)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'member')
       ON DUPLICATE KEY UPDATE name=VALUES(name), name_hi=VALUES(name_hi), district=VALUES(district), district_hi=VALUES(district_hi), block_village=VALUES(block_village)");
-    $stmt->execute([$user['id'], $user['name'], $user['nameHi'], $user['mobile'], $user['district'], $user['districtHi'], $user['blockVillage'], $user['role']]);
+    $stmt->execute([$user['id'], $user['name'], $user['nameHi'], $user['mobile'], $user['district'], $user['districtHi'], $user['blockVillage']]);
     respond(['user' => $user, 'token' => signToken($user, $AUTH_SECRET)]);
 }
 
 if ($route === 'auth/admin' && $method === 'POST') {
     $body = getJsonBody();
-    if (trim((string)($body['pin'] ?? '')) !== $SUPER_ADMIN_PIN) {
-        respond(['error' => 'Invalid Admin PIN'], 401);
+    $mobile = preg_replace('/\D/', '', (string)($body['mobile'] ?? ''));
+    $pin = trim((string)($body['pin'] ?? ''));
+
+    // Basic brute-force protection using app_settings
+    $ipHash = substr(hash('sha256', $_SERVER['REMOTE_ADDR'] ?? 'unknown'), 0, 16);
+    $lockKey = "admin_fail_$ipHash";
+    $failRow = $pdo->prepare("SELECT setting_value FROM app_settings WHERE setting_key=?");
+    $failRow->execute([$lockKey]);
+    $failData = json_decode((string)$failRow->fetchColumn(), true) ?: ['count' => 0, 'until' => 0];
+
+    if ($failData['until'] > time()) {
+        $waitMin = (int)ceil(($failData['until'] - time()) / 60);
+        respond(['error' => "बहुत अधिक गलत प्रयास। कृपया $waitMin मिनट बाद पुनः प्रयास करें।"], 429);
     }
+
+    $validMobile = hash_equals($SUPER_ADMIN_MOBILE, $mobile);
+    $validPin = $SUPER_ADMIN_PIN !== '' && hash_equals($SUPER_ADMIN_PIN, $pin);
+
+    if (!$validMobile || !$validPin) {
+        $nextCount = ((int)$failData['count']) + 1;
+        $until = $nextCount >= 5 ? (time() + 900) : 0; // 15 min lockout after 5 wrong attempts
+        $pdo->prepare("INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)")
+            ->execute([$lockKey, json_encode(['count' => $nextCount >= 5 ? 0 : $nextCount, 'until' => $until])]);
+        respond(['error' => 'गलत मोबाइल नंबर या एडमिन पासवर्ड।'], 401);
+    }
+
+    $pdo->prepare("DELETE FROM app_settings WHERE setting_key=?")->execute([$lockKey]);
     respond(['user' => $SUPER_ADMIN_USER, 'token' => signToken($SUPER_ADMIN_USER, $AUTH_SECRET)]);
 }
 
