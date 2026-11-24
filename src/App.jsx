@@ -17,7 +17,7 @@ import {
   INITIAL_EVENTS,
 } from './data/chhattisgarhData';
 import { t } from './utils/i18n';
-import { api, setAuthToken } from './utils/api';
+import { api, getAuthToken, setAuthToken } from './utils/api';
 
 const STORAGE_KEYS = {
   posts: 'sscg_posts_v1',
@@ -62,31 +62,59 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [toast, setToast] = useState('');
 
-  // Sync with Node.js + MySQL backend on startup if reachable
+  // Sync with MySQL backend on startup & whenever tab becomes visible again
   useEffect(() => {
     let active = true;
-    api
-      .bootstrap()
-      .then((data) => {
-        if (!active || !data) return;
-        setServerConnected(true);
-        if (Array.isArray(data.posts)) setPosts(data.posts);
-        if (Array.isArray(data.sahitya) && data.sahitya.length > 0) setSahitya(data.sahitya);
-        if (Array.isArray(data.historyItems) && data.historyItems.length > 0) {
-          setHistoryItems(data.historyItems);
-        }
-        if (Array.isArray(data.events) && data.events.length > 0) setEvents(data.events);
-        if (typeof data.requireApproval === 'boolean') {
-          setRequireApproval(data.requireApproval);
-        }
-      })
-      .catch(() => {
-        if (active) setServerConnected(false);
-      });
+    const syncFromServer = () => {
+      api
+        .bootstrap()
+        .then((data) => {
+          if (!active || !data) return;
+          setServerConnected(true);
+          if (Array.isArray(data.posts)) setPosts(data.posts);
+          if (Array.isArray(data.sahitya) && data.sahitya.length > 0) setSahitya(data.sahitya);
+          if (Array.isArray(data.historyItems) && data.historyItems.length > 0) {
+            setHistoryItems(data.historyItems);
+          }
+          if (Array.isArray(data.events) && data.events.length > 0) setEvents(data.events);
+          if (typeof data.requireApproval === 'boolean') {
+            setRequireApproval(data.requireApproval);
+          }
+        })
+        .catch(() => {
+          if (active) setServerConnected(false);
+        });
+    };
+
+    syncFromServer();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') syncFromServer();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
     return () => {
       active = false;
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
+
+  // Auto-issue server auth token if user logged in earlier while offline
+  useEffect(() => {
+    if (!serverConnected || !currentUser || getAuthToken()) return;
+    if (currentUser.role === 'member' && currentUser.mobile) {
+      api
+        .loginMember({
+          name: currentUser.name,
+          mobile: currentUser.mobile,
+          district: currentUser.district,
+          districtHi: currentUser.districtHi,
+          blockVillage: currentUser.blockVillage || 'Chhattisgarh',
+        })
+        .then((res) => {
+          if (res?.token) setAuthToken(res.token);
+        })
+        .catch(() => {});
+    }
+  }, [serverConnected, currentUser]);
 
   // Persist offline cache in localStorage
   useEffect(() => {
@@ -174,7 +202,7 @@ export default function App() {
     showToast(t(lang, 'आप सफलतापूर्वक लॉग आउट हो गए हैं।', 'You have signed out.'));
   };
 
-  // Feed Actions (with MySQL API sync + offline fallback)
+  // Feed Actions (with MySQL API sync + clear error handling)
   const handleCreatePost = async (newPostData) => {
     if (serverConnected) {
       try {
@@ -182,12 +210,31 @@ export default function App() {
         setPosts((prev) => [created, ...prev]);
         showToast(
           created.status === 'approved'
-            ? t(lang, 'आपकी पोस्ट चौपाल पर प्रकाशित हो गई!', 'Your post is now live on Chaupal!')
-            : t(lang, 'पोस्ट एडमिन स्वीकृति के लिए भेजी गई है।', 'Post submitted for Admin approval.')
+            ? t(lang, 'आपकी पोस्ट सर्वर पर लाइव प्रकाशित हो गई!', 'Your post is now live on the server!')
+            : t(lang, 'पोस्ट एडमिन स्वीकृति के लिए सर्वर पर भेजी गई है।', 'Post submitted to server for Admin approval.')
         );
         return;
-      } catch {
-        // Fallback to local update if network drops
+      } catch (err) {
+        if (err?.status === 401 || err?.status === 403) {
+          setAuthToken('');
+          setAuthModalOpen(true);
+          showToast(
+            t(
+              lang,
+              'सत्र समाप्त हो गया — सर्वर पर पोस्ट सेव करने के लिए कृपया एक बार फिर लॉगिन करें।',
+              'Session expired — please sign in again to save your post to the server.'
+            )
+          );
+          return;
+        }
+        showToast(
+          t(
+            lang,
+            `सर्वर पर पोस्ट सेव नहीं हो सकी: ${err?.message || 'त्रुटि'}`,
+            `Could not save post to server: ${err?.message || 'Error'}`
+          )
+        );
+        return;
       }
     }
 
@@ -210,9 +257,11 @@ export default function App() {
     };
     setPosts((prev) => [post, ...prev]);
     showToast(
-      post.status === 'approved'
-        ? t(lang, 'आपकी पोस्ट चौपाल पर प्रकाशित हो गई!', 'Your post is now live on Chaupal!')
-        : t(lang, 'पोस्ट एडमिन स्वीकृति के लिए भेजी गई है।', 'Post submitted for Admin approval.')
+      t(
+        lang,
+        '⚠️ ऑफ़लाइन मोड: पोस्ट केवल इसी डिवाइस पर सेव हुई है (सभी डिवाइस हेतु Hostinger api/config.php जोड़ें)।',
+        '⚠️ Offline mode: Post saved on this device only (configure Hostinger api/config.php for live sync).'
+      )
     );
   };
 

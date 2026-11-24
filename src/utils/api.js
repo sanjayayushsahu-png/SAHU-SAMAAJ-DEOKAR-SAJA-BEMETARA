@@ -17,22 +17,30 @@ async function request(path, options = {}) {
   const token = getAuthToken();
   const headers = {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(token
+      ? {
+          Authorization: `Bearer ${token}`,
+          'X-Auth-Token': token,
+        }
+      : {}),
     ...(options.headers || {}),
   };
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
+  const timeout = setTimeout(() => controller.abort(), 8000);
 
   try {
     const res = await fetch(`${API_BASE}${path}`, {
+      cache: 'no-store',
       ...options,
       headers,
       signal: controller.signal,
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-      throw new Error(err.error || `HTTP ${res.status}`);
+      const error = new Error(err.error || `HTTP ${res.status}`);
+      error.status = res.status;
+      throw error;
     }
     return await res.json();
   } finally {
@@ -41,8 +49,8 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  health: () => request('/health'),
-  bootstrap: () => request('/bootstrap'),
+  health: () => request(`/health?t=${Date.now()}`),
+  bootstrap: () => request(`/bootstrap?t=${Date.now()}`),
   loginMember: (payload) =>
     request('/auth/member', { method: 'POST', body: JSON.stringify(payload) }),
   loginAdmin: (pin) =>

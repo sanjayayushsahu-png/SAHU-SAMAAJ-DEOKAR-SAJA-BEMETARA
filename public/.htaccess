@@ -4,6 +4,10 @@ DirectoryIndex index.html
   RewriteEngine On
   RewriteBase /
 
+  # Preserve Authorization header for PHP on Hostinger LiteSpeed/Apache
+  RewriteCond %{HTTP:Authorization} ^(.*)
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%1]
+
   # Route /api/* requests to PHP MySQL API
   RewriteRule ^api/(.*)$ api/index.php?route=$1 [QSA,L]
 
@@ -14,6 +18,13 @@ DirectoryIndex index.html
 
   # Fallback all other routes to React PWA index.html
   RewriteRule ^ index.html [L]
+</IfModule>
+
+# Never cache API responses on LiteSpeed / CDN
+<IfModule mod_headers.c>
+  <FilesMatch "\.php$">
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+  </FilesMatch>
 </IfModule>
 
 # Fast loading on low-bandwidth mobile networks
