@@ -13,12 +13,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-$configPath = __DIR__ . '/config.php';
-if (!file_exists($configPath)) {
+$candidatePaths = [
+    __DIR__ . '/config.php',                      // public_html/api/config.php
+    dirname(__DIR__, 2) . '/sahu_config.php',     // one level above public_html (safe from Hostinger Redeploy!)
+    dirname(__DIR__, 3) . '/sahu_config.php',     // domain/home parent folder
+];
+$configPath = null;
+foreach ($candidatePaths as $p) {
+    if (file_exists($p)) {
+        $configPath = $p;
+        break;
+    }
+}
+if (!$configPath) {
     http_response_code(503);
     echo json_encode([
         'ok' => false,
-        'error' => 'api/config.php not found. Copy api/config.example.php to api/config.php on Hostinger and add your MySQL credentials.',
+        'error' => 'Database config not found. Create sahu_config.php one folder above public_html (safe from Redeploy) or public_html/api/config.php.',
     ]);
     exit;
 }
