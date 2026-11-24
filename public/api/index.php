@@ -14,9 +14,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $candidatePaths = [
-    __DIR__ . '/config.php',                      // public_html/api/config.php
-    dirname(__DIR__, 2) . '/sahu_config.php',     // one level above public_html (safe from Hostinger Redeploy!)
+    dirname(__DIR__, 2) . '/sahu_config.php',     // one level above public_html (primary, safe from Redeploy!)
     dirname(__DIR__, 3) . '/sahu_config.php',     // domain/home parent folder
+    __DIR__ . '/config.php',                      // fallback: public_html/api/config.php
 ];
 $configPath = null;
 foreach ($candidatePaths as $p) {
@@ -47,8 +47,8 @@ try {
     exit;
 }
 $AUTH_SECRET = $config['auth_secret'] ?? 'sahu-samaj-cg-secret';
-$SUPER_ADMIN_PIN = (string)($config['super_admin_pin'] ?? '1234');
-$SUPER_ADMIN_MOBILE = (string)($config['super_admin_mobile'] ?? '9630273317');
+$SUPER_ADMIN_PIN = trim((string)($config['super_admin_pin'] ?? '1234'));
+$SUPER_ADMIN_MOBILE = preg_replace('/\D/', '', (string)($config['super_admin_mobile'] ?? '9630273317'));
 
 $SUPER_ADMIN_USER = [
     'id' => 'admin-sanjay-sahu',
