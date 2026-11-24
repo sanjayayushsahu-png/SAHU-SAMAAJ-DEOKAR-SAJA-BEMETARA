@@ -10,8 +10,9 @@ import {
   Calendar,
   RotateCcw,
   Megaphone,
+  MapPin,
 } from 'lucide-react';
-import { CG_DISTRICTS } from '../data/chhattisgarhData';
+import { CG_DISTRICTS, BEMETARA_REGIONS } from '../data/chhattisgarhData';
 import { t, formatRelativeDate } from '../utils/i18n';
 
 export default function AdminDashboard({
@@ -171,6 +172,36 @@ export default function AdminDashboard({
             <RotateCcw className="w-3.5 h-3.5" />
             {t(lang, 'डेमो डेटा रीसेट', 'Reset Demo Data')}
           </button>
+        </div>
+      </div>
+
+      {/* Bemetara District Regions Showcase */}
+      <div className="cream-card rounded-2xl p-4 sm:p-5 border-2 border-gold-400/70 bg-gradient-to-r from-cream-100 via-gold-50/60 to-saffron-50/50">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2 font-serifHindi font-bold text-maroon-800 text-base sm:text-lg">
+            <MapPin className="w-5 h-5 text-saffron-600" />
+            <span>
+              {t(
+                lang,
+                'जिला बेमेतरा — प्रमुख सामाजिक क्षेत्र एवं परिक्षेत्र',
+                'Bemetara District — Key Community Regions'
+              )}
+            </span>
+          </div>
+          <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-maroon-100 text-maroon-800 border border-maroon-200">
+            {t(lang, '6 प्रमुख क्षेत्र सक्रिय', '6 Active Regions')}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
+          {BEMETARA_REGIONS.map((region) => (
+            <div
+              key={region.id}
+              className="rounded-xl bg-white border border-gold-400/70 px-3 py-2.5 text-center shadow-sm hover:border-saffron-500 hover:bg-saffron-50/40 transition-all"
+            >
+              <div className="font-bold text-maroon-900 text-sm sm:text-base">{region.hi}</div>
+              <div className="text-[11px] text-saffron-700 font-medium">{region.en}</div>
+            </div>
+          ))}
         </div>
       </div>
 

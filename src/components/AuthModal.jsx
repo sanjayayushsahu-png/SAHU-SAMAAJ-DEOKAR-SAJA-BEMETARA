@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, UserCheck, ShieldCheck, Phone, MapPin, Home, User } from 'lucide-react';
-import { CG_DISTRICTS, SUPER_ADMIN_USER } from '../data/chhattisgarhData';
+import { CG_DISTRICTS, BEMETARA_REGIONS, SUPER_ADMIN_USER } from '../data/chhattisgarhData';
 import { t } from '../utils/i18n';
 import { api, setAuthToken } from '../utils/api';
 
@@ -241,10 +241,28 @@ export default function AuthModal({ isOpen, onClose, lang, onLogin, serverConnec
                     type="text"
                     value={blockVillage}
                     onChange={(e) => setBlockVillage(e.target.value)}
-                    placeholder={t(lang, 'उदा. साजा / ग्राम देवरबीजा', 'e.g. Saja / Village Deorbija')}
+                    placeholder={t(lang, 'उदा. देवकर / साजा / परपोड़ी', 'e.g. Deokar / Saja / Parpodi')}
                     className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gold-400/70 bg-white focus:outline-none focus:ring-2 focus:ring-saffron-500 text-sm"
                   />
                 </div>
+                {district === 'Bemetara' && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {BEMETARA_REGIONS.map((r) => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => setBlockVillage(r.hi)}
+                        className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                          blockVillage === r.hi
+                            ? 'bg-saffron-500 text-white border-saffron-600'
+                            : 'bg-cream-200 text-maroon-800 border-gold-300 hover:bg-saffron-50'
+                        }`}
+                      >
+                        {r.hi}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <button

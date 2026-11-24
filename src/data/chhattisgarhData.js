@@ -1,3 +1,12 @@
+export const BEMETARA_REGIONS = [
+  { id: 'bemetara', hi: 'बेमेतरा', en: 'Bemetara' },
+  { id: 'deokar', hi: 'देवकर', en: 'Deokar' },
+  { id: 'saja', hi: 'साजा', en: 'Saja' },
+  { id: 'parpodi', hi: 'परपोड़ी', en: 'Parpodi' },
+  { id: 'berla', hi: 'बेरला', en: 'Berla' },
+  { id: 'thankhamharia', hi: 'थानखम्हरिया', en: 'Thankhamharia' },
+];
+
 export const CG_DISTRICTS = [
   { id: 'raipur', hi: 'रायपुर', en: 'Raipur' },
   { id: 'durg', hi: 'दुर्ग', en: 'Durg' },

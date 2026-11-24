@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Sparkles, Music, MessageSquarePlus, Download, MapPin, HeartHandshake } from 'lucide-react';
+import { BEMETARA_REGIONS } from '../data/chhattisgarhData';
 import { t } from '../utils/i18n';
 
 export default function HeroBanner3D({
@@ -134,6 +135,24 @@ export default function HeroBanner3D({
                   <HeartHandshake className="w-3 h-3 text-saffron-400" />
                   {t(lang, 'आगामी कार्यक्रम', 'Events')}
                 </div>
+              </div>
+            </div>
+
+            {/* Bemetara Key Regions Strip */}
+            <div className="pt-2 max-w-2xl mx-auto lg:mx-0">
+              <div className="text-[11px] sm:text-xs text-gold-300/90 font-semibold mb-1.5 flex items-center justify-center lg:justify-start gap-1">
+                <MapPin className="w-3.5 h-3.5 text-saffron-400" />
+                <span>{t(lang, 'प्रमुख क्षेत्र (बेमेतरा अंचल):', 'Key Regions (Bemetara Zone):')}</span>
+              </div>
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-1.5">
+                {BEMETARA_REGIONS.map((region) => (
+                  <span
+                    key={region.id}
+                    className="px-2.5 py-1 rounded-full bg-maroon-900/80 border border-gold-400/50 text-gold-100 text-xs font-semibold shadow-sm"
+                  >
+                    {lang === 'hi' ? region.hi : `${region.hi} (${region.en})`}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
