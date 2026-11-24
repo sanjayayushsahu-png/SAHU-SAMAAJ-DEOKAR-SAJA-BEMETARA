@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sahu-samaj-cg-v1';
+const CACHE_NAME = 'sahu-samaj-cg-v2';
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -33,6 +33,12 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
+
+  // Never cache live API requests — always fetch fresh posts/comments from MySQL
+  if (url.origin === self.location.origin && url.pathname.startsWith('/api/')) {
+    return;
+  }
+
   if (url.origin !== self.location.origin) {
     // Stale-while-revalidate for Google Fonts and external assets
     event.respondWith(

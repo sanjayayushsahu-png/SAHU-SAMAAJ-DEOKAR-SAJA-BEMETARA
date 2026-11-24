@@ -2,8 +2,10 @@
 declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Auth-Token');
 header('Access-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -76,9 +78,22 @@ function verifyToken(?string $token, string $secret): ?array {
 }
 
 function getCurrentUser(string $secret): ?array {
-    $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    $customToken = $_SERVER['HTTP_X_AUTH_TOKEN'] ?? '';
+    if ($customToken !== '') {
+        return verifyToken(trim($customToken), $secret);
+    }
+
+    $header = $_SERVER['HTTP_AUTHORIZATION']
+        ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
+        ?? '';
     if (!$header && function_exists('apache_request_headers')) {
         $headers = apache_request_headers();
+        if (!empty($headers['X-Auth-Token'])) {
+            return verifyToken(trim($headers['X-Auth-Token']), $secret);
+        }
+        if (!empty($headers['x-auth-token'])) {
+            return verifyToken(trim($headers['x-auth-token']), $secret);
+        }
         $header = $headers['Authorization'] ?? $headers['authorization'] ?? '';
     }
     if (stripos($header, 'Bearer ') === 0) {
