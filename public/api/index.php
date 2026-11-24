@@ -6,7 +6,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Auth-Token');
-header('Access-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -255,6 +255,50 @@ try {
       setting_key VARCHAR(64) PRIMARY KEY,
       setting_value VARCHAR(255) NOT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS directory_members (
+      id VARCHAR(64) PRIMARY KEY,
+      name_hi VARCHAR(150) NOT NULL,
+      name_en VARCHAR(150) DEFAULT '',
+      designation_hi VARCHAR(200) NOT NULL,
+      designation_en VARCHAR(200) DEFAULT '',
+      district VARCHAR(80) NOT NULL,
+      district_hi VARCHAR(80) NOT NULL,
+      block_hi VARCHAR(120) DEFAULT '',
+      phone VARCHAR(20) NOT NULL,
+      wing VARCHAR(32) DEFAULT 'main',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS dharmashalas (
+      id VARCHAR(64) PRIMARY KEY,
+      name_hi VARCHAR(255) NOT NULL,
+      name_en VARCHAR(255) DEFAULT '',
+      district VARCHAR(80) NOT NULL,
+      district_hi VARCHAR(80) NOT NULL,
+      address_hi TEXT NOT NULL,
+      address_en TEXT,
+      capacity VARCHAR(150) DEFAULT '',
+      capacity_en VARCHAR(150) DEFAULT '',
+      facilities_json TEXT,
+      phone VARCHAR(20) DEFAULT '',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS samaj_ratna (
+      id VARCHAR(64) PRIMARY KEY,
+      name_hi VARCHAR(180) NOT NULL,
+      name_en VARCHAR(180) DEFAULT '',
+      category VARCHAR(40) DEFAULT 'social',
+      district_hi VARCHAR(80) NOT NULL,
+      district_en VARCHAR(80) DEFAULT '',
+      achievement_hi TEXT NOT NULL,
+      achievement_en TEXT,
+      bio_hi TEXT,
+      bio_en TEXT,
+      initials VARCHAR(12) DEFAULT '',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 } catch (Throwable $e) {
     respond(['ok' => false, 'database' => 'mysql', 'error' => $e->getMessage()], 503);
 }
@@ -334,6 +378,9 @@ if ($route === 'bootstrap' && $method === 'GET') {
     $sahityaRows = $pdo->query("SELECT * FROM sahitya ORDER BY created_at DESC")->fetchAll();
     $historyRows = $pdo->query("SELECT * FROM history_items ORDER BY created_at ASC")->fetchAll();
     $eventRows = $pdo->query("SELECT * FROM events ORDER BY event_date ASC")->fetchAll();
+    $dirRows = $pdo->query("SELECT * FROM directory_members ORDER BY created_at DESC")->fetchAll();
+    $dharRows = $pdo->query("SELECT * FROM dharmashalas ORDER BY created_at DESC")->fetchAll();
+    $ratnaRows = $pdo->query("SELECT * FROM samaj_ratna ORDER BY created_at DESC")->fetchAll();
     $settings = $pdo->query("SELECT setting_key, setting_value FROM app_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 
     $likesByPost = [];
@@ -418,11 +465,55 @@ if ($route === 'bootstrap' && $method === 'GET') {
         'rsvpedByMe' => false,
     ], $eventRows);
 
+    $directory = array_map(fn($d) => [
+        'id' => $d['id'],
+        'nameHi' => $d['name_hi'],
+        'nameEn' => $d['name_en'],
+        'designationHi' => $d['designation_hi'],
+        'designationEn' => $d['designation_en'],
+        'district' => $d['district'],
+        'districtHi' => $d['district_hi'],
+        'blockHi' => $d['block_hi'],
+        'phone' => $d['phone'],
+        'wing' => $d['wing'],
+    ], $dirRows);
+
+    $dharmashalas = array_map(fn($dh) => [
+        'id' => $dh['id'],
+        'nameHi' => $dh['name_hi'],
+        'nameEn' => $dh['name_en'],
+        'district' => $dh['district'],
+        'districtHi' => $dh['district_hi'],
+        'addressHi' => $dh['address_hi'],
+        'addressEn' => $dh['address_en'],
+        'capacity' => $dh['capacity'],
+        'capacityEn' => $dh['capacity_en'],
+        'facilitiesHi' => json_decode($dh['facilities_json'] ?: '[]', true) ?: [],
+        'phone' => $dh['phone'],
+    ], $dharRows);
+
+    $samajRatna = array_map(fn($r) => [
+        'id' => $r['id'],
+        'nameHi' => $r['name_hi'],
+        'nameEn' => $r['name_en'],
+        'category' => $r['category'],
+        'districtHi' => $r['district_hi'],
+        'districtEn' => $r['district_en'],
+        'achievementHi' => $r['achievement_hi'],
+        'achievementEn' => $r['achievement_en'],
+        'bioHi' => $r['bio_hi'],
+        'bioEn' => $r['bio_en'],
+        'initials' => $r['initials'],
+    ], $ratnaRows);
+
     respond([
         'posts' => $posts,
         'sahitya' => $sahitya,
         'historyItems' => $historyItems,
         'events' => $events,
+        'directory' => $directory,
+        'dharmashalas' => $dharmashalas,
+        'samajRatna' => $samajRatna,
         'requireApproval' => ($settings['require_approval'] ?? 'true') !== 'false',
     ]);
 }
@@ -503,6 +594,14 @@ if ($route === 'sahitya' && $method === 'POST') {
     respond(array_merge(['id' => $id], $b), 201);
 }
 
+if (preg_match('#^sahitya/([^/]+)$#', $route, $m) && $method === 'PUT') {
+    requireSuperAdmin($AUTH_SECRET);
+    $b = getJsonBody();
+    $pdo->prepare("UPDATE sahitya SET category=?, title_hi=?, title_en=?, author_hi=?, author_en=?, audio_url=?, verses_json=?, summary_en=? WHERE id=?")
+        ->execute([$b['category'] ?? 'bhajan', $b['titleHi'] ?? '', $b['titleEn'] ?? '', $b['authorHi'] ?? '', $b['authorEn'] ?? '', $b['audioUrl'] ?? '', json_encode($b['verses'] ?? [], JSON_UNESCAPED_UNICODE), $b['summaryEn'] ?? '', $m[1]]);
+    respond(array_merge(['id' => $m[1]], $b));
+}
+
 if (preg_match('#^sahitya/([^/]+)$#', $route, $m) && $method === 'DELETE') {
     requireSuperAdmin($AUTH_SECRET);
     $pdo->prepare("DELETE FROM sahitya WHERE id=?")->execute([$m[1]]);
@@ -516,6 +615,14 @@ if ($route === 'history' && $method === 'POST') {
     $pdo->prepare("INSERT INTO history_items (id,era_hi,era_en,category,title_hi,title_en,subtitle_hi,subtitle_en,summary_hi,summary_en,details_hi,details_en) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
         ->execute([$id, $b['eraHi'] ?? '', $b['eraEn'] ?? '', $b['category'] ?? 'chhattisgarh', $b['titleHi'] ?? '', $b['titleEn'] ?? '', $b['subtitleHi'] ?? '', $b['subtitleEn'] ?? '', $b['summaryHi'] ?? '', $b['summaryEn'] ?? '', $b['detailsHi'] ?? '', $b['detailsEn'] ?? '']);
     respond(array_merge(['id' => $id], $b), 201);
+}
+
+if (preg_match('#^history/([^/]+)$#', $route, $m) && $method === 'PUT') {
+    requireSuperAdmin($AUTH_SECRET);
+    $b = getJsonBody();
+    $pdo->prepare("UPDATE history_items SET era_hi=?, era_en=?, title_hi=?, title_en=?, summary_hi=?, summary_en=?, details_hi=?, details_en=? WHERE id=?")
+        ->execute([$b['eraHi'] ?? '', $b['eraEn'] ?? '', $b['titleHi'] ?? '', $b['titleEn'] ?? '', $b['summaryHi'] ?? '', $b['summaryEn'] ?? '', $b['detailsHi'] ?? '', $b['detailsEn'] ?? '', $m[1]]);
+    respond(array_merge(['id' => $m[1]], $b));
 }
 
 if (preg_match('#^history/([^/]+)$#', $route, $m) && $method === 'DELETE') {
@@ -533,9 +640,89 @@ if ($route === 'events' && $method === 'POST') {
     respond(array_merge(['id' => $id, 'rsvpCount' => 1, 'rsvpedByMe' => false], $b), 201);
 }
 
+if (preg_match('#^events/([^/]+)$#', $route, $m) && $method === 'PUT') {
+    requireSuperAdmin($AUTH_SECRET);
+    $b = getJsonBody();
+    $pdo->prepare("UPDATE events SET title_hi=?, title_en=?, event_date=?, event_time=?, district=?, district_hi=?, venue_hi=?, venue_en=?, description_hi=?, description_en=? WHERE id=?")
+        ->execute([$b['titleHi'] ?? '', $b['titleEn'] ?? '', $b['date'] ?? '', $b['time'] ?? '', $b['district'] ?? 'Raipur', $b['districtHi'] ?? 'रायपुर', $b['venueHi'] ?? '', $b['venueEn'] ?? '', $b['descriptionHi'] ?? '', $b['descriptionEn'] ?? '', $m[1]]);
+    respond(array_merge(['id' => $m[1]], $b));
+}
+
 if (preg_match('#^events/([^/]+)$#', $route, $m) && $method === 'DELETE') {
     requireSuperAdmin($AUTH_SECRET);
     $pdo->prepare("DELETE FROM events WHERE id=?")->execute([$m[1]]);
+    respond(['ok' => true]);
+}
+
+// --- Directory (पदाधिकारी) CRUD ---
+if ($route === 'directory' && $method === 'POST') {
+    requireSuperAdmin($AUTH_SECRET);
+    $b = getJsonBody();
+    $id = 'dir-' . (int)(microtime(true) * 1000);
+    $pdo->prepare("INSERT INTO directory_members (id,name_hi,name_en,designation_hi,designation_en,district,district_hi,block_hi,phone,wing) VALUES (?,?,?,?,?,?,?,?,?,?)")
+        ->execute([$id, $b['nameHi'] ?? '', $b['nameEn'] ?? ($b['nameHi'] ?? ''), $b['designationHi'] ?? '', $b['designationEn'] ?? ($b['designationHi'] ?? ''), $b['district'] ?? 'Bemetara', $b['districtHi'] ?? 'बेमेतरा', $b['blockHi'] ?? '', $b['phone'] ?? '', $b['wing'] ?? 'main']);
+    respond(array_merge(['id' => $id], $b), 201);
+}
+
+if (preg_match('#^directory/([^/]+)$#', $route, $m) && $method === 'PUT') {
+    requireSuperAdmin($AUTH_SECRET);
+    $b = getJsonBody();
+    $pdo->prepare("UPDATE directory_members SET name_hi=?, name_en=?, designation_hi=?, designation_en=?, district=?, district_hi=?, block_hi=?, phone=?, wing=? WHERE id=?")
+        ->execute([$b['nameHi'] ?? '', $b['nameEn'] ?? ($b['nameHi'] ?? ''), $b['designationHi'] ?? '', $b['designationEn'] ?? ($b['designationHi'] ?? ''), $b['district'] ?? 'Bemetara', $b['districtHi'] ?? 'बेमेतरा', $b['blockHi'] ?? '', $b['phone'] ?? '', $b['wing'] ?? 'main', $m[1]]);
+    respond(array_merge(['id' => $m[1]], $b));
+}
+
+if (preg_match('#^directory/([^/]+)$#', $route, $m) && $method === 'DELETE') {
+    requireSuperAdmin($AUTH_SECRET);
+    $pdo->prepare("DELETE FROM directory_members WHERE id=?")->execute([$m[1]]);
+    respond(['ok' => true]);
+}
+
+// --- Dharmashalas (धर्मशाला) CRUD ---
+if ($route === 'dharmashalas' && $method === 'POST') {
+    requireSuperAdmin($AUTH_SECRET);
+    $b = getJsonBody();
+    $id = 'dhar-' . (int)(microtime(true) * 1000);
+    $pdo->prepare("INSERT INTO dharmashalas (id,name_hi,name_en,district,district_hi,address_hi,address_en,capacity,capacity_en,facilities_json,phone) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+        ->execute([$id, $b['nameHi'] ?? '', $b['nameEn'] ?? ($b['nameHi'] ?? ''), $b['district'] ?? 'Bemetara', $b['districtHi'] ?? 'बेमेतरा', $b['addressHi'] ?? '', $b['addressEn'] ?? ($b['addressHi'] ?? ''), $b['capacity'] ?? '', $b['capacityEn'] ?? ($b['capacity'] ?? ''), json_encode($b['facilitiesHi'] ?? [], JSON_UNESCAPED_UNICODE), $b['phone'] ?? '']);
+    respond(array_merge(['id' => $id], $b), 201);
+}
+
+if (preg_match('#^dharmashalas/([^/]+)$#', $route, $m) && $method === 'PUT') {
+    requireSuperAdmin($AUTH_SECRET);
+    $b = getJsonBody();
+    $pdo->prepare("UPDATE dharmashalas SET name_hi=?, name_en=?, district=?, district_hi=?, address_hi=?, address_en=?, capacity=?, capacity_en=?, facilities_json=?, phone=? WHERE id=?")
+        ->execute([$b['nameHi'] ?? '', $b['nameEn'] ?? ($b['nameHi'] ?? ''), $b['district'] ?? 'Bemetara', $b['districtHi'] ?? 'बेमेतरा', $b['addressHi'] ?? '', $b['addressEn'] ?? ($b['addressHi'] ?? ''), $b['capacity'] ?? '', $b['capacityEn'] ?? ($b['capacity'] ?? ''), json_encode($b['facilitiesHi'] ?? [], JSON_UNESCAPED_UNICODE), $b['phone'] ?? '', $m[1]]);
+    respond(array_merge(['id' => $m[1]], $b));
+}
+
+if (preg_match('#^dharmashalas/([^/]+)$#', $route, $m) && $method === 'DELETE') {
+    requireSuperAdmin($AUTH_SECRET);
+    $pdo->prepare("DELETE FROM dharmashalas WHERE id=?")->execute([$m[1]]);
+    respond(['ok' => true]);
+}
+
+// --- Samaj Ratna (समाज रत्न) CRUD ---
+if ($route === 'ratna' && $method === 'POST') {
+    requireSuperAdmin($AUTH_SECRET);
+    $b = getJsonBody();
+    $id = 'ratna-' . (int)(microtime(true) * 1000);
+    $pdo->prepare("INSERT INTO samaj_ratna (id,name_hi,name_en,category,district_hi,district_en,achievement_hi,achievement_en,bio_hi,bio_en,initials) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+        ->execute([$id, $b['nameHi'] ?? '', $b['nameEn'] ?? ($b['nameHi'] ?? ''), $b['category'] ?? 'social', $b['districtHi'] ?? 'बेमेतरा', $b['districtEn'] ?? 'Bemetara', $b['achievementHi'] ?? '', $b['achievementEn'] ?? ($b['achievementHi'] ?? ''), $b['bioHi'] ?? '', $b['bioEn'] ?? ($b['bioHi'] ?? ''), $b['initials'] ?? '']);
+    respond(array_merge(['id' => $id], $b), 201);
+}
+
+if (preg_match('#^ratna/([^/]+)$#', $route, $m) && $method === 'PUT') {
+    requireSuperAdmin($AUTH_SECRET);
+    $b = getJsonBody();
+    $pdo->prepare("UPDATE samaj_ratna SET name_hi=?, name_en=?, category=?, district_hi=?, district_en=?, achievement_hi=?, achievement_en=?, bio_hi=?, bio_en=?, initials=? WHERE id=?")
+        ->execute([$b['nameHi'] ?? '', $b['nameEn'] ?? ($b['nameHi'] ?? ''), $b['category'] ?? 'social', $b['districtHi'] ?? 'बेमेतरा', $b['districtEn'] ?? 'Bemetara', $b['achievementHi'] ?? '', $b['achievementEn'] ?? ($b['achievementHi'] ?? ''), $b['bioHi'] ?? '', $b['bioEn'] ?? ($b['bioHi'] ?? ''), $b['initials'] ?? '', $m[1]]);
+    respond(array_merge(['id' => $m[1]], $b));
+}
+
+if (preg_match('#^ratna/([^/]+)$#', $route, $m) && $method === 'DELETE') {
+    requireSuperAdmin($AUTH_SECRET);
+    $pdo->prepare("DELETE FROM samaj_ratna WHERE id=?")->execute([$m[1]]);
     respond(['ok' => true]);
 }
 

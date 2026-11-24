@@ -69,16 +69,40 @@ export const api = {
     request(`/posts/${postId}`, { method: 'DELETE' }),
   addSahitya: (payload) =>
     request('/sahitya', { method: 'POST', body: JSON.stringify(payload) }),
+  updateSahitya: (id, payload) =>
+    request(`/sahitya/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteSahitya: (id) =>
     request(`/sahitya/${id}`, { method: 'DELETE' }),
   addHistory: (payload) =>
     request('/history', { method: 'POST', body: JSON.stringify(payload) }),
+  updateHistory: (id, payload) =>
+    request(`/history/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteHistory: (id) =>
     request(`/history/${id}`, { method: 'DELETE' }),
   addEvent: (payload) =>
     request('/events', { method: 'POST', body: JSON.stringify(payload) }),
+  updateEvent: (id, payload) =>
+    request(`/events/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteEvent: (id) =>
     request(`/events/${id}`, { method: 'DELETE' }),
+  addDirectory: (payload) =>
+    request('/directory', { method: 'POST', body: JSON.stringify(payload) }),
+  updateDirectory: (id, payload) =>
+    request(`/directory/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteDirectory: (id) =>
+    request(`/directory/${id}`, { method: 'DELETE' }),
+  addDharmashala: (payload) =>
+    request('/dharmashalas', { method: 'POST', body: JSON.stringify(payload) }),
+  updateDharmashala: (id, payload) =>
+    request(`/dharmashalas/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteDharmashala: (id) =>
+    request(`/dharmashalas/${id}`, { method: 'DELETE' }),
+  addRatna: (payload) =>
+    request('/ratna', { method: 'POST', body: JSON.stringify(payload) }),
+  updateRatna: (id, payload) =>
+    request(`/ratna/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteRatna: (id) =>
+    request(`/ratna/${id}`, { method: 'DELETE' }),
   toggleRsvp: (id, going) =>
     request(`/events/${id}/rsvp`, { method: 'POST', body: JSON.stringify({ going }) }),
   setRequireApproval: (requireApproval) =>

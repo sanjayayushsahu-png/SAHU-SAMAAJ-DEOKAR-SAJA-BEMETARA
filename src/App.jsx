@@ -24,6 +24,9 @@ const STORAGE_KEYS = {
   sahitya: 'sscg_sahitya_v1',
   history: 'sscg_history_v1',
   events: 'sscg_events_v1',
+  directory: 'sscg_directory_v1',
+  dharmashalas: 'sscg_dharmashalas_v1',
+  samajRatna: 'sscg_ratna_v1',
   user: 'sscg_user_v1',
   lang: 'sscg_lang_v1',
   fontScale: 'sscg_font_scale_v1',
@@ -56,6 +59,15 @@ export default function App() {
     loadState(STORAGE_KEYS.history, INITIAL_HISTORY)
   );
   const [events, setEvents] = useState(() => loadState(STORAGE_KEYS.events, INITIAL_EVENTS));
+  const [directory, setDirectory] = useState(() =>
+    loadState(STORAGE_KEYS.directory, INITIAL_DIRECTORY)
+  );
+  const [dharmashalas, setDharmashalas] = useState(() =>
+    loadState(STORAGE_KEYS.dharmashalas, INITIAL_DHARMASHALAS)
+  );
+  const [samajRatna, setSamajRatna] = useState(() =>
+    loadState(STORAGE_KEYS.samajRatna, INITIAL_SAMAJ_RATNA)
+  );
 
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [serverConnected, setServerConnected] = useState(false);
@@ -77,6 +89,15 @@ export default function App() {
             setHistoryItems(data.historyItems);
           }
           if (Array.isArray(data.events) && data.events.length > 0) setEvents(data.events);
+          if (Array.isArray(data.directory) && data.directory.length > 0) {
+            setDirectory(data.directory);
+          }
+          if (Array.isArray(data.dharmashalas) && data.dharmashalas.length > 0) {
+            setDharmashalas(data.dharmashalas);
+          }
+          if (Array.isArray(data.samajRatna) && data.samajRatna.length > 0) {
+            setSamajRatna(data.samajRatna);
+          }
           if (typeof data.requireApproval === 'boolean') {
             setRequireApproval(data.requireApproval);
           }
@@ -136,6 +157,18 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.events, JSON.stringify(events));
   }, [events]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.directory, JSON.stringify(directory));
+  }, [directory]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.dharmashalas, JSON.stringify(dharmashalas));
+  }, [dharmashalas]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.samajRatna, JSON.stringify(samajRatna));
+  }, [samajRatna]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(currentUser));
@@ -325,7 +358,7 @@ export default function App() {
     if (serverConnected) api.setRequireApproval(nextVal).catch(() => {});
   };
 
-  // Sahitya, History & Events Admin Actions
+  // Sahitya, History, Events, Directory, Dharmashala & Samaj Ratna Full CRUD Actions
   const handleAddSahitya = async (item) => {
     let created = { id: `sahitya-${Date.now()}`, ...item };
     if (serverConnected) {
@@ -339,9 +372,16 @@ export default function App() {
     showToast(t(lang, 'नया भजन / साहित्य जोड़ा गया।', 'New Sahitya item added.'));
   };
 
+  const handleUpdateSahitya = async (id, item) => {
+    setSahitya((prev) => prev.map((i) => (i.id === id ? { ...i, ...item, id } : i)));
+    if (serverConnected) api.updateSahitya(id, item).catch(() => {});
+    showToast(t(lang, 'भजन / साहित्य अपडेट किया गया।', 'Sahitya item updated.'));
+  };
+
   const handleDeleteSahitya = (id) => {
     setSahitya((prev) => prev.filter((i) => i.id !== id));
     if (serverConnected) api.deleteSahitya(id).catch(() => {});
+    showToast(t(lang, 'भजन / साहित्य हटाया गया।', 'Sahitya item deleted.'));
   };
 
   const handleAddHistory = async (item) => {
@@ -357,9 +397,16 @@ export default function App() {
     showToast(t(lang, 'इतिहास प्रसंग जोड़ा गया।', 'History entry added.'));
   };
 
+  const handleUpdateHistory = async (id, item) => {
+    setHistoryItems((prev) => prev.map((h) => (h.id === id ? { ...h, ...item, id } : h)));
+    if (serverConnected) api.updateHistory(id, item).catch(() => {});
+    showToast(t(lang, 'इतिहास प्रसंग अपडेट किया गया।', 'History entry updated.'));
+  };
+
   const handleDeleteHistory = (id) => {
     setHistoryItems((prev) => prev.filter((i) => i.id !== id));
     if (serverConnected) api.deleteHistory(id).catch(() => {});
+    showToast(t(lang, 'इतिहास प्रसंग हटाया गया।', 'History entry deleted.'));
   };
 
   const handleAddEvent = async (ev) => {
@@ -375,9 +422,91 @@ export default function App() {
     showToast(t(lang, 'नया कार्यक्रम प्रकाशित हुआ।', 'New event published.'));
   };
 
+  const handleUpdateEvent = async (id, ev) => {
+    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...ev, id } : e)));
+    if (serverConnected) api.updateEvent(id, ev).catch(() => {});
+    showToast(t(lang, 'कार्यक्रम अपडेट किया गया।', 'Event updated.'));
+  };
+
   const handleDeleteEvent = (id) => {
     setEvents((prev) => prev.filter((e) => e.id !== id));
     if (serverConnected) api.deleteEvent(id).catch(() => {});
+    showToast(t(lang, 'कार्यक्रम हटाया गया।', 'Event deleted.'));
+  };
+
+  const handleAddDirectory = async (member) => {
+    let created = { id: `dir-${Date.now()}`, ...member };
+    if (serverConnected) {
+      try {
+        created = await api.addDirectory(member);
+      } catch {
+        // fallback local
+      }
+    }
+    setDirectory((prev) => [created, ...prev]);
+    showToast(t(lang, 'नए पदाधिकारी जोड़े गए।', 'Office bearer added.'));
+  };
+
+  const handleUpdateDirectory = async (id, member) => {
+    setDirectory((prev) => prev.map((d) => (d.id === id ? { ...d, ...member, id } : d)));
+    if (serverConnected) api.updateDirectory(id, member).catch(() => {});
+    showToast(t(lang, 'पदाधिकारी विवरण अपडेट किया गया।', 'Office bearer updated.'));
+  };
+
+  const handleDeleteDirectory = (id) => {
+    setDirectory((prev) => prev.filter((d) => d.id !== id));
+    if (serverConnected) api.deleteDirectory(id).catch(() => {});
+    showToast(t(lang, 'पदाधिकारी हटाए गए।', 'Office bearer deleted.'));
+  };
+
+  const handleAddDharmashala = async (dh) => {
+    let created = { id: `dhar-${Date.now()}`, ...dh };
+    if (serverConnected) {
+      try {
+        created = await api.addDharmashala(dh);
+      } catch {
+        // fallback local
+      }
+    }
+    setDharmashalas((prev) => [created, ...prev]);
+    showToast(t(lang, 'नई धर्मशाला / समाज भवन जोड़ा गया।', 'Dharmashala added.'));
+  };
+
+  const handleUpdateDharmashala = async (id, dh) => {
+    setDharmashalas((prev) => prev.map((d) => (d.id === id ? { ...d, ...dh, id } : d)));
+    if (serverConnected) api.updateDharmashala(id, dh).catch(() => {});
+    showToast(t(lang, 'धर्मशाला विवरण अपडेट किया गया।', 'Dharmashala updated.'));
+  };
+
+  const handleDeleteDharmashala = (id) => {
+    setDharmashalas((prev) => prev.filter((d) => d.id !== id));
+    if (serverConnected) api.deleteDharmashala(id).catch(() => {});
+    showToast(t(lang, 'धर्मशाला हटाई गई।', 'Dharmashala deleted.'));
+  };
+
+  const handleAddRatna = async (r) => {
+    let created = { id: `ratna-${Date.now()}`, ...r };
+    if (serverConnected) {
+      try {
+        created = await api.addRatna(r);
+      } catch {
+        // fallback local
+      }
+    }
+    setSamajRatna((prev) => [created, ...prev]);
+    showToast(t(lang, 'नया समाज रत्न जोड़ा गया।', 'Samaj Ratna added.'));
+  };
+
+  const handleUpdateRatna = async (id, r) => {
+    setSamajRatna((prev) => prev.map((x) => (x.id === id ? { ...x, ...r, id } : x)));
+    if (serverConnected) api.updateRatna(id, r).catch(() => {});
+    showToast(t(lang, 'समाज रत्न अपडेट किया गया।', 'Samaj Ratna updated.'));
+  };
+
+  const handleDeleteRatna = (id) => {
+    setSamajRatna((prev) => prev.filter((x) => x.id !== id));
+    if (serverConnected) api.deleteRatna(id).catch(() => {});
+    showToast(t(lang, 'समाज रत्न हटाया गया।', 'Samaj Ratna deleted.'));
   };
 
   const handleToggleRsvp = (eventId) => {
@@ -400,6 +529,9 @@ export default function App() {
     setSahitya(INITIAL_SAHITYA);
     setHistoryItems(INITIAL_HISTORY);
     setEvents(INITIAL_EVENTS);
+    setDirectory(INITIAL_DIRECTORY);
+    setDharmashalas(INITIAL_DHARMASHALAS);
+    setSamajRatna(INITIAL_SAMAJ_RATNA);
     showToast(t(lang, 'डेमो डेटा रीसेट कर दिया गया।', 'Demo data restored.'));
   };
 
@@ -470,15 +602,15 @@ export default function App() {
           <ItihasSection
             lang={lang}
             historyItems={historyItems}
-            samajRatna={INITIAL_SAMAJ_RATNA}
+            samajRatna={samajRatna}
           />
         )}
 
         {activeTab === 'directory' && (
           <DirectoryEventsSection
             lang={lang}
-            directory={INITIAL_DIRECTORY}
-            dharmashalas={INITIAL_DHARMASHALAS}
+            directory={directory}
+            dharmashalas={dharmashalas}
             events={events}
             onToggleRsvp={handleToggleRsvp}
           />
@@ -491,17 +623,32 @@ export default function App() {
             sahitya={sahitya}
             historyItems={historyItems}
             events={events}
+            directory={directory}
+            dharmashalas={dharmashalas}
+            samajRatna={samajRatna}
             requireApproval={requireApproval}
             setRequireApproval={handleSetRequireApproval}
             onApprovePost={handleApprovePost}
             onDeletePost={handleDeletePost}
             onToggleFeatured={handleToggleFeatured}
             onAddSahitya={handleAddSahitya}
+            onUpdateSahitya={handleUpdateSahitya}
             onDeleteSahitya={handleDeleteSahitya}
             onAddHistory={handleAddHistory}
+            onUpdateHistory={handleUpdateHistory}
             onDeleteHistory={handleDeleteHistory}
             onAddEvent={handleAddEvent}
+            onUpdateEvent={handleUpdateEvent}
             onDeleteEvent={handleDeleteEvent}
+            onAddDirectory={handleAddDirectory}
+            onUpdateDirectory={handleUpdateDirectory}
+            onDeleteDirectory={handleDeleteDirectory}
+            onAddDharmashala={handleAddDharmashala}
+            onUpdateDharmashala={handleUpdateDharmashala}
+            onDeleteDharmashala={handleDeleteDharmashala}
+            onAddRatna={handleAddRatna}
+            onUpdateRatna={handleUpdateRatna}
+            onDeleteRatna={handleDeleteRatna}
             onResetDemo={handleResetDemo}
           />
         )}
